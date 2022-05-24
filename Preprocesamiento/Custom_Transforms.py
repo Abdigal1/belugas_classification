@@ -4,15 +4,27 @@ from torchvision import transforms
 from skimage.transform import  resize
 
 class MultiInputToTensor(object):
-  def __init__(self,to_normalize_keys=[],to_int_keys=[]):
-    self.to_normalize_keys=to_normalize_keys
-    self.to_int_keys=to_int_keys
+  def __init__(self,images=["x"],metadata=["y","vp"]):
+    self.images=images
+    self.metadata=metadata
     self.TT=transforms.ToTensor()
   def __call__(self,sample):
-    for k in self.to_normalize_keys:
+    for k in self.images:
       sample[k]=(self.TT(sample[k])/255).float()
-    for k in self.to_int_keys:
-      sample[k]=self.TT(sample[k]).float()
+    for k in self.metadata:
+      sample[k]=torch.tensor(sample[k]).float()
+    return sample
+
+class vp_one_hot_encoding(object):
+  def __init__(self):
+    self.encoding={
+      'left':np.array([1,0,0]),
+      'right':np.array([0,1,0]),
+      'top':np.array([0,0,1])
+    }
+    pass
+  def __call__(self,sample):
+    sample["vp"]=self.encoding[sample["vp"]]
     return sample
 
 class MultiInputResize(object):

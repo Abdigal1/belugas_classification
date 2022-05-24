@@ -7,8 +7,8 @@ import pyro.distributions as dist
 #from pyro.infer import SVI,Trace_ELBO
 #from pyro.optim import Adam
 
-from .DL_utils.utils import NeuralNet
-from .DL_utils.Generative_autoencoder_utils import Base_Generative_AutoEncoder
+from DL_utils.utils import NeuralNet
+from DL_utils.Generative_autoencoder_utils import Base_Generative_AutoEncoder
 
 
 class VAE(NeuralNet):
@@ -71,7 +71,7 @@ class VAE(NeuralNet):
     return z_mu.detach(),z_sig.detach(),x_r.detach()
 
 class Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder):
-  def __init__(self,encoding_decoding_module,P_NET,Q_NET,losses_weigths={"generative_loss":0},subsample=None,sig_scale=1,save_output=False,aux_dir=None,module_name=None):
+  def __init__(self,encoding_decoding_module,P_NET,Q_NET,losses_weigths={"generative_loss":1},subsample=None,sig_scale=1,save_output=False,aux_dir=None,module_name=None):
     super(Flexible_Encoding_Decoding_VAE,self).__init__(Encoder_Decoder_Module=encoding_decoding_module,P_NET=P_NET,Q_NET=Q_NET,losses_weigths=losses_weigths)
     """
     encoding_module: Trainable function that maps X to y where y is a vector
@@ -103,6 +103,8 @@ class Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder):
 
       x_re=self.P.x_z(z)
       x_r=self.Encoding_Decoding.Decoding(x_re)
+
+      #Add losses
 
       #Define prior relation to obs
       pyro.sample("obs",dist.Bernoulli(x_r).to_event(3),obs=((x>0.5)).float())
