@@ -5,6 +5,7 @@ import os
 import pickle
 import copy
 import matplotlib.pyplot as plt
+from .plot_utils import plot_training_sample
 
 class trainer(object):
     def __init__(self,model,dataset,epochs,folds,batch_size,use_cuda,data_dir,in_device=None,num_workers=0,args=["PhantomRGB"],uniform=True,view_out_state=True,MNIST_debug=False):
@@ -175,15 +176,33 @@ class trainer(object):
     def train_test(self,train_set,test_set):
 
         #Is file already exists charge ------------------------------------------------------------------------------------------------------------------------
-        if "loss_results.npy" in os.listdir(self.data_dir):
+        if b"loss_results.npy" in os.listdir(self.data_dir) or "loss_results.npy" in os.listdir(self.data_dir):
             print("result found")
             self.loss_DATA=np.load(os.path.join(self.data_dir,'loss_results.npy'),allow_pickle=True).tolist()
+
+            #LOAD OPTIMIZER, MODEL, CURRENT EPOCH AND NUMBER OF EPOCHS FROM CHECKPOINT ------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        if b"checkpoint.pt" in os.listdir(self.data_dir) or "checkpoint.pt" in os.listdir(self.data_dir):
+            print("checkpoint found")
+
+            checkpoint=torch.load(os.path.join(self.data_dir,"checkpoint.pt"))
+            self.current_epoch=checkpoint["current_epoch"]
+            #self.epochs=checkpoint["total_epoch"]
+            if self.epochs-1!=self.current_epoch:
+
+                self.model.load_state_dict(checkpoint['model_state_dict'])
+                self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            else:
+                print("was the last")
+
+        else:
+            self.current_epoch=0
 
 
         best_result=0
 
         if self.view_out_state:
-            figure,axs=plt.subplots(1,2)
+            #z_mu,z_sig,x_r,x
+            plot_sample=plot_training_sample(images_idxs=[2,3],titles=["reconstruction","input"])
 
         for epoch in tqdm(range(self.current_epoch,self.epochs),desc="Epoch"):
 
@@ -212,20 +231,11 @@ class trainer(object):
                     x=x.cuda()
                 self.model.eval()
                 out=self.model.forward_pass(x.unsqueeze(0))
-                #z_mu,z_sig,y,y_c
+                out=(list(out))
+                out.append(x.unsqueeze(0))
+                #z_mu,z_sig,x_r,x
                 self.model.train()
-                #if view_mode=="inline"
-                #should be a parameter in viz function
-                outs=2
-                shapes=[(167,215),(167,215),(167,215,3)]
-                figure,axs=plt.subplots(1,outs+1)
-                for o in range(outs):
-                    axs[o].imshow(out[2+o].detach().cpu().numpy().reshape(shapes[o]))
-                #axs[outs].imshow(x.detach().cpu().numpy().reshape(shapes[outs]))
-                axs[outs].imshow(np.swapaxes(np.swapaxes(x.detach().cpu().numpy(),0,1),1,2)*255)
-                #axs[1].imshow(x_r.detach().cpu().numpy().reshape(28,28))
-                plt.show()
-                #if view_mode=="interactive"
+                plot_sample.plot(out)
 
             if (np.mean(np.array(losses_te["test"]["total_loss"])))>best_result:
                 best_result=(np.mean(np.array(losses_te["test"]["total_loss"])))

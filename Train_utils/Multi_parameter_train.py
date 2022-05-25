@@ -1,5 +1,6 @@
 import os
 import sys
+import copy
 import numpy as np
 import json
 from tqdm import tqdm
@@ -140,6 +141,7 @@ class multi_parameter_training(trainer):
         for test_id in tqdm(range(len(self.test_dirs)),desc="Model test"):
             test=self.test_dirs[test_id]
             test_json=json.load(open(os.path.join(test,"config.json")))
+            test_json_save=copy.deepcopy(test_json)
             trainer_args=test_json["trainer"]
             model_args=test_json["model"]
             transforms_args=test_json["transforms"]
@@ -176,9 +178,11 @@ class multi_parameter_training(trainer):
                     tqdm.write("tranning failed")
                     tqdm.write(e)
                     test_json["experiment_state"]="fail"
-                    test_json["error"]=e
+                    test_json["error"]=str(e)
                     #TODO show error
                 #save config.json
-                f=open(os.path.join(test,"config.json"),"wb")
-                f.write(json.dump(test_json))
+                f=open(os.path.join(test,"config.json"),"w")
+                json.dump(test_json_save,f,indent=6)
+                #f.write(json.dump(test_json))
+                f.close()
                 tqdm.write("Training model "+str(test_id))
