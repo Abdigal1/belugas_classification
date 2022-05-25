@@ -7,12 +7,13 @@ from torch.utils.data import DataLoader, Dataset
 import matplotlib.pyplot as plt
 
 class belugaDataset(Dataset):
-    def __init__(self, csv_file, im_folder, keep_ratio = False, size = (720, 480)):
+    def __init__(self, csv_file, im_folder, keep_ratio = False, size = (720, 480),transform=None):
         self.csv_file = csv_file
         self.im_folder = im_folder
         self.keep_ratio = keep_ratio
         self.df = pd.read_csv(csv_file)
         self.size = size
+        self.transform=transform
 
 
     def __len__(self):
@@ -45,7 +46,10 @@ class belugaDataset(Dataset):
 
         else:  
             img = cv2.resize(img, self.size)
-        return {'x':img, 'date':date, 'y':y, 'vp':viewpoint} 
+        sample={'x':img, 'date':date, 'y':y, 'vp':viewpoint}
+        if self.transform:
+            sample=self.transform(sample)
+        return sample
 
 
 if __name__ == "__main__":

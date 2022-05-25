@@ -1,7 +1,8 @@
 import fire
-
+import os
+import sys
 #sys.path.append('/content/MMSports_Challenge')
-#sys.path.append('/content/MMSports_Challenge/Models/')
+sys.path.append("Models")
 #sys.path.append('/content/MMSports_Challenge/Data_preprocessing/')
 #sys.path.append('/content/MMSports_Challenge/Train_utils/')
 
@@ -14,12 +15,12 @@ def main():
 
 
     mpt=multi_parameter_training(
-    results_directory="/../../Results/Basic_CNN_EDM",
-    dataset_root_directory="/../DataBase/instance-segmentation-challenge/",
+    results_directory=os.path.join("..","Results","VAE","Basic_CNN_EDM"),
+    dataset_root_directory=os.path.join("..","belugas_classification"),
     train=True,
     test=True,
     K_fold_training=None,
-    visualization=True
+    visualization=False
     )
 
     mpt.Train()

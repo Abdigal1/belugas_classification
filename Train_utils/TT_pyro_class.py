@@ -6,7 +6,7 @@ import pickle
 import copy
 import matplotlib.pyplot as plt
 
-class trainer():
+class trainer(object):
     def __init__(self,model,dataset,epochs,folds,batch_size,use_cuda,data_dir,in_device=None,num_workers=0,args=["PhantomRGB"],uniform=True,view_out_state=True,MNIST_debug=False):
         self.epochs=epochs
         self.dataset=dataset

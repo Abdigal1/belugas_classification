@@ -22,13 +22,12 @@ class vp_one_hot_encoding(object):
       'right':np.array([0,1,0]),
       'top':np.array([0,0,1])
     }
-    pass
   def __call__(self,sample):
     sample["vp"]=self.encoding[sample["vp"]]
     return sample
 
 class MultiInputResize(object):
-  def __init__(self,shape=(1670,2151),rgb_keys=[],mask_keys=[]):
+  def __init__(self,shape=(300,100),rgb_keys=["x"],mask_keys=[]):
     self.shape=shape
     self.rgb_keys=rgb_keys
     self.mask_keys=mask_keys

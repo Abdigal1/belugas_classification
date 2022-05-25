@@ -7,13 +7,14 @@ from torchvision import transforms
 import torch
 from torch import nn
 
-sys.path.append(os.path.join("..","Data_preprocessing"))
-import Custom_Transforms
-from Custom_dataloader import segmentationDataset
+sys.path.append(os.path.join("..","Preprocesamiento"))
+from Preprocesamiento import Custom_Transforms
+from Preprocesamiento.dataLoader import belugaDataset
 
 sys.path.append(os.path.join("..","Models"))
 #from Encoding_Decoding_modules.Basic_Encoding_Decoding_Module import Basic_Convolutional_EDM
-import Encoding_Decoding_modules
+from Models import DL_utils
+from Models import Encoding_Decoding_modules
 
 #from Models.CVAE_NETs.P_NET import P_NET
 #from Models.CVAE_NETs.Q_NET import Q_NET
@@ -21,13 +22,14 @@ import Encoding_Decoding_modules
 #from Models.pyro_CVAE import CVAE
 import Models
 
-from TT_pyro_class import trainer
+from .TT_pyro_class import trainer
 
-class multi_parameter_training(object):
-    def __init__(self,results_directory,dataset_root_directory,train=True,test=True,K_fold_training=None,visualization=False):
+class multi_parameter_training(trainer):
+    def __init__(self,results_directory,dataset_root_directory,train=True,test=True,K_fold_training=None,visualization=False,split_frac=0.8):
 
         self.datasets={}
         self.Compose_trans=None
+        self.split_frac=split_frac
         self.results_directory=results_directory
         self.dataset_root_directory=dataset_root_directory
         self.train=train
@@ -46,14 +48,37 @@ class multi_parameter_training(object):
             instantiated_trans_seq.append(getattr(Custom_Transforms,t)(**(transform_args[t])))
         self.Compose_trans=transforms.Compose(instantiated_trans_seq)
  
+    def split_dataset(self,dataset):
+        train_s= int((len(dataset))*self.split_frac)
+        test_s=int((len(dataset))-train_s)
+
+        if "data_split.pkl" in os.listdir(self.results_directory):
+            print("data split found")
+            dict=self.load_dict(os.path.join(self.results_directory,"data_split.pkl"))
+            train_index=dict["train_index"]
+            test_index=dict["test_index"]
+        else:
+            #NON_DEBUG
+            train_index,test_index=torch.utils.data.random_split(range(len(dataset)),[train_s, test_s])
+            #DEBUG
+            #train_index,test_index=torch.utils.data.random_split(range(30),[train_s, test_s])
+            dataset_split_index={
+                "train_index":train_index,
+                "test_index":test_index
+            }
+            self.save_dict(dataset_split_index,os.path.join(self.results_directory,"data_split.pkl"))
+
+        self.datasets["train_set"] = torch.utils.data.Subset(dataset, train_index)
+        self.datasets["test_set"] = torch.utils.data.Subset(dataset, test_index)
+
     def set_datasets(self):
-        segmentation_dataset_dir=self.dataset_root_directory
-        annotations_dir=os.path.join(segmentation_dataset_dir,"annotations")
-        #TODO: load validation and other splits
-        train_ann=json.load(open(os.path.join(annotations_dir,"train.json")))
-        test_ann=json.load(open(os.path.join(annotations_dir,"test.json")))
-        self.datasets["train_set"]=segmentationDataset(train_ann,segmentation_dataset_dir,transform=self.Compose_trans)
-        self.datasets["test_set"]=segmentationDataset(test_ann,segmentation_dataset_dir,transform=self.Compose_trans)
+
+        dataset=belugaDataset(
+            csv_file=os.path.join(self.dataset_root_directory,"metadata.csv"),
+            im_folder=os.path.join(self.dataset_root_directory,"images"),
+            transform=self.Compose_trans
+            )
+        self.split_dataset(dataset)
 
             
     def parse_activators(self,raw_params):
@@ -131,31 +156,29 @@ class multi_parameter_training(object):
             trainer_args["dataset"]=self.datasets
 
             self.trainer=trainer(**(trainer_args))
+            self.trainer.optimizer=torch.optim.Adam(self.trainer.model.parameters(),**(test_json["optimizer"]))
             
             if test_json["experiment_state"]=="waiting":
-              try:
-                if self.train and self.test:
-                  self.trainer.optimizer=torch.optim.Adam(self.trainer.model.parameters(),**(test_json["optimizer"]))
-                  self.trainer.train_test(**(self.datasets))
-                  test_json["experiment_state"]="done"
-                elif self.train and not(self.test):
-                  #set train rutine
-                  self.trainer.optimizer=torch.optim.Adam(self.trainer.model.parameters(),**(test_json["optimizer"]))
-                  test_json["experiment_state"]="done"
-                elif not(self.train) and self.test:
-                  #set optimizer
-                  self.trainer.train(self.datasets["train"])
-                  self.trainer.test(self.datasets["test"])
-                  test_json["experiment_state"]="done"
-                #elif self.K_fold_training!=None:
+                try:
+                    if self.train and self.test:
+                        self.trainer.train_test(**(self.datasets))
+                        test_json["experiment_state"]="done"
+                    elif self.train and not(self.test):
+                        #set train rutine
+                        test_json["experiment_state"]="done"
+                    elif not(self.train) and self.test:
+                        self.trainer.train(self.datasets["train"])
+                        self.trainer.test(self.datasets["test"])
+                        test_json["experiment_state"]="done"
+                    #elif self.K_fold_training!=None:
 
-              except Exception as e:
-                tqdm.write("tranning failed")
-                tqdm.write(e)
-                test_json["experiment_state"]="fail"
-                test_json["error"]=e
-                #TODO show error
-              #save config.json
-              f=open(os.path.join(test,"config.json"),"wb")
-              f.write(json.dump(test_json))
-              tqdm.write("Training model "+str(test_id))
+                except Exception as e:
+                    tqdm.write("tranning failed")
+                    tqdm.write(e)
+                    test_json["experiment_state"]="fail"
+                    test_json["error"]=e
+                    #TODO show error
+                #save config.json
+                f=open(os.path.join(test,"config.json"),"wb")
+                f.write(json.dump(test_json))
+                tqdm.write("Training model "+str(test_id))
