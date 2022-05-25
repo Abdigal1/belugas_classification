@@ -49,7 +49,7 @@ class multi_parameter_training(trainer):
             instantiated_trans_seq.append(getattr(Custom_Transforms,t)(**(transform_args[t])))
         self.Compose_trans=transforms.Compose(instantiated_trans_seq)
  
-    def split_dataset(self,dataset):
+    def split_dataset(self,dataset,test_dir):
         train_s= int((len(dataset))*self.split_frac)
         test_s=int((len(dataset))-train_s)
 
@@ -67,12 +67,12 @@ class multi_parameter_training(trainer):
                 "train_index":train_index,
                 "test_index":test_index
             }
-            self.save_dict(dataset_split_index,os.path.join(self.results_directory,"data_split.pkl"))
+            self.save_dict(dataset_split_index,os.path.join(test_dir,"data_split.pkl"))
 
         self.datasets["train_set"] = torch.utils.data.Subset(dataset, train_index)
         self.datasets["test_set"] = torch.utils.data.Subset(dataset, test_index)
 
-    def set_datasets(self):
+    def set_datasets(self,test_dir):
 
         dataset=belugaDataset(
             csv_file=os.path.join(self.dataset_root_directory,"metadata.csv"),
@@ -80,7 +80,7 @@ class multi_parameter_training(trainer):
             size = (300, 100),
             transform=self.Compose_trans
             )
-        self.split_dataset(dataset)
+        self.split_dataset(dataset,test_dir)
 
             
     def parse_activators(self,raw_params):
@@ -148,7 +148,7 @@ class multi_parameter_training(trainer):
             transforms_args=test_json["transforms"]
 
             self.prepare_transforms(transforms_args)
-            self.set_datasets()
+            self.set_datasets(test)
             self.set_model(model_args)
             
             if test_json["trainer"]["use_cuda"]:
