@@ -77,6 +77,7 @@ class multi_parameter_training(trainer):
         dataset=belugaDataset(
             csv_file=os.path.join(self.dataset_root_directory,"metadata.csv"),
             im_folder=os.path.join(self.dataset_root_directory,"images"),
+            size = (300, 100),
             transform=self.Compose_trans
             )
         self.split_dataset(dataset)
@@ -164,21 +165,21 @@ class multi_parameter_training(trainer):
                 try:
                     if self.train and self.test:
                         self.trainer.train_test(**(self.datasets))
-                        test_json["experiment_state"]="done"
+                        test_json_save["experiment_state"]="done"
                     elif self.train and not(self.test):
                         #set train rutine
-                        test_json["experiment_state"]="done"
+                        test_json_save["experiment_state"]="done"
                     elif not(self.train) and self.test:
                         self.trainer.train(self.datasets["train"])
                         self.trainer.test(self.datasets["test"])
-                        test_json["experiment_state"]="done"
+                        test_json_save["experiment_state"]="done"
                     #elif self.K_fold_training!=None:
 
                 except Exception as e:
                     tqdm.write("tranning failed")
                     tqdm.write(e)
-                    test_json["experiment_state"]="fail"
-                    test_json["error"]=str(e)
+                    test_json_save["experiment_state"]="fail"
+                    test_json_save["error"]=str(e)
                     #TODO show error
                 #save config.json
                 f=open(os.path.join(test,"config.json"),"w")

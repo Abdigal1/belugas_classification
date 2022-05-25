@@ -10,7 +10,7 @@ class MultiInputToTensor(object):
     self.TT=transforms.ToTensor()
   def __call__(self,sample):
     for k in self.images:
-      sample[k]=(self.TT(sample[k])/255).float()
+      sample[k]=(self.TT(sample[k])).float()
     for k in self.metadata:
       sample[k]=torch.tensor(sample[k]).float()
     return sample
@@ -33,7 +33,7 @@ class MultiInputResize(object):
     self.mask_keys=mask_keys
   def __call__(self,sample):
     for k in self.rgb_keys:
-      sample[k]=resize(sample[k],self.shape)
+      sample[k]=resize(sample[k],self.shape,preserve_range=True)
     for k in self.mask_keys:
       sample[k]=np.round(resize(sample[k],self.shape,preserve_range=True))
     return sample

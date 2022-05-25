@@ -11,7 +11,7 @@ class plot_training_sample(object):
 
         
     def tensor_image_to_image(self,image):
-        return np.swapaxes(np.swapaxes(image,0,1),1,2)*255
+        return (np.swapaxes(np.swapaxes(image,0,1),1,2)*255).astype(np.uint8)
 
     def plot(self,outs):
 
