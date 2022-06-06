@@ -1,10 +1,7 @@
 import fire
 import os
 import sys
-#sys.path.append('/content/MMSports_Challenge')
 sys.path.append("Models")
-#sys.path.append('/content/MMSports_Challenge/Data_preprocessing/')
-#sys.path.append('/content/MMSports_Challenge/Train_utils/')
 
 from Train_utils.Multi_parameter_train import multi_parameter_training
 
