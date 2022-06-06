@@ -88,7 +88,7 @@ class Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder):
     #self.x_z=NeuralNet(layer_size[::-1],dec_activators)
     self.z_dim=self.Q.z_x_mu.layer_sizes[-1]
 
-  def model(self,x,In_ID=None):
+  def model(self,x,resize=None):
     #Sampling pass
     #pyro.module("post_NET",self.Encoding_Decoding.Decoding)
     pyro.module("x_z_NET",self.P.x_z)
@@ -107,6 +107,8 @@ class Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder):
       #Add losses
 
       #Define prior relation to obs
+      if resize!=None:
+        x=F.interpolate(x,resize)
       pyro.sample("obs",dist.Bernoulli(x_r).to_event(3),obs=((x>0.5)).float())
       #pyro.sample("obs",dist.Bernoulli(x_r).to_event(1),obs=((x)).float())
   
@@ -132,6 +134,18 @@ class Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder):
       self.losses["total_loss"]=self.losses["total_loss"]+self.losses[loss]*self.losses_weigths[loss]
 
     return self.losses
+
+  def gen_forward_pass(self,xi):
+    x=self.Encoding_Decoding.Encoding(xi)
+    z_mu=self.Q.z_x_mu(x)
+    z_sig=torch.exp(self.Q.z_x_sig(x))
+
+    z=dist.Normal(z_mu,z_sig).sample()
+
+    x_re=self.P.x_z(z)
+    x_r=self.Encoding_Decoding.Decoding(x_re)
+
+    return {"z_mu":z_mu.detach().cpu(),"z_sig":z_sig.detach().cpu(),"x_r":x_r.detach().cpu()}
 
   def forward_pass(self,xi):
     x=self.Encoding_Decoding.Encoding(xi)

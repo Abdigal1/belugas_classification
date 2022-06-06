@@ -13,14 +13,8 @@ from Preprocesamiento import Custom_Transforms
 from Preprocesamiento.dataLoader import belugaDataset
 
 sys.path.append(os.path.join("..","Models"))
-#from Encoding_Decoding_modules.Basic_Encoding_Decoding_Module import Basic_Convolutional_EDM
 from Models import DL_utils
 from Models import Encoding_Decoding_modules
-
-#from Models.CVAE_NETs.P_NET import P_NET
-#from Models.CVAE_NETs.Q_NET import Q_NET
-
-#from Models.pyro_CVAE import CVAE
 import Models
 
 from .TT_pyro_class import trainer
@@ -72,7 +66,7 @@ class multi_parameter_training(trainer):
         self.datasets["train_set"] = torch.utils.data.Subset(dataset, train_index)
         self.datasets["test_set"] = torch.utils.data.Subset(dataset, test_index)
 
-    def set_datasets(self,test_dir):
+    def set_datasets(self,test_dir,split=True):
 
         dataset=belugaDataset(
             csv_file=os.path.join(self.dataset_root_directory,"metadata.csv"),
@@ -80,7 +74,10 @@ class multi_parameter_training(trainer):
             size = (300, 100),
             transform=self.Compose_trans
             )
-        self.split_dataset(dataset,test_dir)
+        if split:
+            self.split_dataset(dataset,test_dir)
+        else:
+            self.dataset=dataset
 
             
     def parse_activators(self,raw_params):
