@@ -177,7 +177,7 @@ class multi_parameter_training(trainer):
 
                 except Exception as e:
                     tqdm.write("tranning failed")
-                    tqdm.write(e)
+                    tqdm.write(str(e))
                     test_json_save["experiment_state"]="fail"
                     test_json_save["error"]=str(e)
                     #TODO show error
