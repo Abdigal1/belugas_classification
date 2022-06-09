@@ -29,29 +29,19 @@ def save_generation(qz_x_mu,qz_x_logsig,qw_x_mu,qw_x_logsig,py,idx,batch,out_met
     
 v_save_generation=np.vectorize(save_generation,signature="(a),(b),(c),(d),(e),(),(),()->()")
 
-def save_model_generation(out,vars_keys,metadata_keys,idx,batch,out_meta_dir=""):
+def save_model_generation(out,vars_keys,metadata_keys,idx,batch,out_meta_dir="",batch_id=0,batch_l=64):
     latent_metadata={}
     for var in vars_keys:
-        latent_metadata[var]=out[var][idx]
+        latent_metadata[var]=out[var][idx].numpy()
 
     for m in metadata_keys:
-        latent_metadata[m]=batch[m][idx]
-
-    #latent_metadata={}
-    #latent_metadata['z_x_mu']=qz_x_mu
-    #latent_metadata['z_x_logsig']=qz_x_logsig
-    #latent_metadata['w_x_mu']=qw_x_mu
-    #latent_metadata['w_x_logsig']=qw_x_logsig
-    #latent_metadata['py']=py
-    #latent_metadata['Place']=batch['Place'][idx]
-    #latent_metadata['Date']=batch['Date'][idx]
-    #latent_metadata['Class']=batch['landmarks'][idx]
+        latent_metadata[m]=batch[m][idx].detach().cpu().numpy()
     
-    file=open(os.path.join(out_meta_dir,(batch['y'][idx]+'.pkl')),'wb')
+    file=open(os.path.join(out_meta_dir,(str(idx+batch_id*batch_l)+"_"+str(int(batch['y'][idx].numpy()))+'.pkl')),'wb')
     pickle.dump(latent_metadata,file)
     file.close()
     
-v_save_model_generation=np.vectorize(save_generation,signature="(a),(b),(c),(d),(e),(),(),()->()")
+v_save_model_generation=np.vectorize(save_model_generation,signature="(),(b),(c),(),(),(),(),()->()")
 
 def read_results(npy,fold):
     train=npy.tolist()[fold]['train']
@@ -189,19 +179,21 @@ def parallel_gen_metadata_model(data_base,out_meta_dir,model,batch_size,num_work
                                              drop_last=False)
     for idx, batch in tqdm(enumerate(dataloader_eval),desc="latent_vars"):
         iargs=(batch[arg].to(device_in) for arg in args)
-        x_=model.encoder_conv(*(iargs))
-        x=model.flatten(x_)
+        #x_=model.encoder_conv(*(iargs))
+        #x=model.flatten(x_)
 
         #Inference Function
-        stvars=model.gen_forward_pass(x)
+        stvars=model.gen_forward_pass(*(iargs))
         
         v_save_model_generation(
             out=stvars,
             vars_keys=["z_mu","z_sig"],
-            metadata_keys=["date","y","vp"],
+            metadata_keys=["y","vp"],
             idx=np.arange(0,stvars["x_r"].numpy().shape[0]),#asing batch_size,
             batch=batch,
-            out_meta_dir=out_meta_dir
+            out_meta_dir=out_meta_dir,
+            batch_id=idx,
+            batch_l=batch_size
         )
 
 

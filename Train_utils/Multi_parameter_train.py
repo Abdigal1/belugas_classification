@@ -71,7 +71,7 @@ class multi_parameter_training(trainer):
         dataset=belugaDataset(
             csv_file=os.path.join(self.dataset_root_directory,"metadata.csv"),
             im_folder=os.path.join(self.dataset_root_directory,"images"),
-            size = (300, 100),
+            #size = (300, 100),
             transform=self.Compose_trans
             )
         if split:

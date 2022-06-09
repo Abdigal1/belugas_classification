@@ -5,6 +5,8 @@ import os
 import pickle
 import copy
 import matplotlib.pyplot as plt
+import gc
+
 from .plot_utils import plot_training_sample
 
 class trainer(object):
@@ -86,23 +88,13 @@ class trainer(object):
             self.loss_epoch["train"][l]=[]
 
         for idx, batch in tqdm(enumerate(dataloader),desc="instances"):
-#            if self.uniform:
-#                losses=self.model.ELBO(batch[self.args[0]].to(device))
-#            else:
-#                args=(batch[arg].to(device) for arg in self.args)
-#                losses=self.model.ELBO(**(args))
+            #print(batch["x"].size())
             #ONLY FOR DEBUG ------------------------------------------------------------------------
             if self.MNIST_debug:
                 batch=batch[0]
             #----------------------------------------------------------------------------------------
             args=(batch[arg].to(device) for arg in self.args)
             losses=self.model.compute_losses(*(args))
-
-            #WITH DICT ARGS TYPE
-            #args={}
-            #for arg in self.args:
-            #    args[arg]=batch[arg].to(device)
-            #losses=self.model.Compute_losses(**(args))
             
             #Compute loss
             loss=losses["total_loss"]
@@ -219,6 +211,9 @@ class trainer(object):
 
             loss_epoch=self.train(dataloader_train)
             losses_te=self.test(dataloader_test)
+            torch.cuda.empty_cache()
+            
+            gc.collect()
 
             #CHECK OUTPUT PER EPOCH
             if self.view_out_state:
@@ -256,6 +251,8 @@ class trainer(object):
             self.security_checkpoint(current_epoch=epoch,
                                 loss=loss_epoch["train"]["total_loss"],
                                 )
+            del loss_epoch
+            del losses_te
 
 
         return best_model

@@ -24,6 +24,8 @@ def main():
 
     for model in os.listdir(os.path.join("..","Results")):
         for EncDec in os.listdir(os.path.join("..","Results",model)):
+            print(model)
+            print(EncDec)
             mpt=multi_parameter_training(
                 results_directory=os.path.join("..","Results",model,EncDec),
                 dataset_root_directory=os.path.join("..","belugas_classification"),
