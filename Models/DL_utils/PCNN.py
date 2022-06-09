@@ -134,6 +134,8 @@ class Max_Pool_encoder_conv(nn.Module):
             ]
         )
     def forward(self,x):
+        self.idx_list=[]
+        self.Sidx_list=[]
         for l in self.im_layers:
             x=l(x)
             self.idx_list.append(l.idx)
