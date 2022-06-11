@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+import copy
 import torch.nn.functional as F
 
 import pyro
@@ -161,7 +162,7 @@ class Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder):
 
 class Decoupled_Loss_Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder):
   def __init__(self,encoding_decoding_module,P_NET,Q_NET,losses_weigths={"generative_loss":1},subsample=None,sig_scale=1,save_output=False,aux_dir=None,module_name=None):
-    super(Flexible_Encoding_Decoding_VAE,self).__init__(Encoder_Decoder_Module=encoding_decoding_module,P_NET=P_NET,Q_NET=Q_NET,losses_weigths=losses_weigths)
+    super(Decoupled_Loss_Flexible_Encoding_Decoding_VAE,self).__init__(Encoder_Decoder_Module=encoding_decoding_module,P_NET=P_NET,Q_NET=Q_NET,losses_weigths=losses_weigths)
     """
     encoding_module: Trainable function that maps X to y where y is a vector
     decoding_module: Trainable function that maps y to y where X is a vector
