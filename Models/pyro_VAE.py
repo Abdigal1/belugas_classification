@@ -72,7 +72,7 @@ class VAE(NeuralNet):
     return z_mu.detach(),z_sig.detach(),x_r.detach()
 
 class Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder):
-  def __init__(self,encoding_decoding_module,P_NET,Q_NET,losses_weigths={"generative_loss":1},subsample=None,sig_scale=1,save_output=False,aux_dir=None,module_name=None):
+  def __init__(self,encoding_decoding_module,P_NET,Q_NET,losses_weigths={"generative_loss":1},subsample=None,sig_scale=1,resize=None,save_output=False,aux_dir=None,module_name=None):
     super(Flexible_Encoding_Decoding_VAE,self).__init__(Encoder_Decoder_Module=encoding_decoding_module,P_NET=P_NET,Q_NET=Q_NET,losses_weigths=losses_weigths)
     """
     encoding_module: Trainable function that maps X to y where y is a vector
@@ -82,6 +82,7 @@ class Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder):
     self.scale=sig_scale
     self.losses={}
     self.gen_loss_fun=pyro.infer.Trace_ELBO().differentiable_loss
+    self.resize=resize
 
     self.Encoding_Decoding=encoding_decoding_module
     #self.z_x_mu=NeuralNet(layer_size,enc_activators)
@@ -89,7 +90,7 @@ class Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder):
     #self.x_z=NeuralNet(layer_size[::-1],dec_activators)
     self.z_dim=self.Q.z_x_mu.layer_sizes[-1]
 
-  def model(self,x,resize=None):
+  def model(self,x):
     #Sampling pass
     #pyro.module("post_NET",self.Encoding_Decoding.Decoding)
     pyro.module("x_z_NET",self.P.x_z)
@@ -108,8 +109,9 @@ class Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder):
       #Add losses
 
       #Define prior relation to obs
-      if resize!=None:
-        x=F.interpolate(x,resize)
+      if self.resize!=None:
+        x=F.interpolate(x,self.resize)
+
       pyro.sample("obs",dist.Bernoulli(x_r).to_event(3),obs=((x>0.5)).float())
       #pyro.sample("obs",dist.Bernoulli(x_r).to_event(1),obs=((x)).float())
   
@@ -161,12 +163,13 @@ class Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder):
     return z_mu.detach(),z_sig.detach(),x_r.detach()
 
 class Decoupled_Loss_Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder):
-  def __init__(self,encoding_decoding_module,P_NET,Q_NET,losses_weigths={"generative_loss":1},subsample=None,sig_scale=1,save_output=False,aux_dir=None,module_name=None):
+  def __init__(self,encoding_decoding_module,P_NET,Q_NET,losses_weigths={"generative_loss":1},subsample=None,sig_scale=1,save_output=False,aux_dir=None,module_name=None,resize=None):
     super(Flexible_Encoding_Decoding_VAE,self).__init__(Encoder_Decoder_Module=encoding_decoding_module,P_NET=P_NET,Q_NET=Q_NET,losses_weigths=losses_weigths)
     """
     encoding_module: Trainable function that maps X to y where y is a vector
     decoding_module: Trainable function that maps y to y where X is a vector
     """
+    self.resize=resize
     self.subsample=subsample
     self.scale=sig_scale
     self.losses={}
@@ -178,7 +181,7 @@ class Decoupled_Loss_Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder)
     #self.x_z=NeuralNet(layer_size[::-1],dec_activators)
     self.z_dim=self.Q.z_x_mu.layer_sizes[-1]
 
-  def model(self,x,resize=None):
+  def model(self,x):
     #Sampling pass
     #pyro.module("post_NET",self.Encoding_Decoding.Decoding)
     pyro.module("x_z_NET",self.P.x_z)
@@ -197,8 +200,8 @@ class Decoupled_Loss_Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder)
       #Add losses
 
       #Define prior relation to obs
-      if resize!=None:
-        x=F.interpolate(x,resize)
+      if self.resize!=None:
+        x=F.interpolate(x,self.resize)
       self.x_r=pyro.sample("obs",dist.Bernoulli(x_r).to_event(3),obs=((x>0.5)).float())
   
   def guide(self,x):
@@ -250,12 +253,13 @@ class Decoupled_Loss_Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder)
     return z_mu.detach(),z_sig.detach(),x_r.detach()
 
 class Decoupled_Loss_Normal_Prior_Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder):
-  def __init__(self,encoding_decoding_module,P_NET,Q_NET,losses_weigths={"generative_loss":1},subsample=None,sig_scale=1,save_output=False,aux_dir=None,module_name=None):
+  def __init__(self,encoding_decoding_module,P_NET,Q_NET,losses_weigths={"generative_loss":1},subsample=None,sig_scale=1,save_output=False,aux_dir=None,module_name=None,resize=None):
     super(Decoupled_Loss_Normal_Prior_Flexible_Encoding_Decoding_VAE,self).__init__(Encoder_Decoder_Module=encoding_decoding_module,P_NET=P_NET,Q_NET=Q_NET,losses_weigths=losses_weigths)
     """
     encoding_module: Trainable function that maps X to y where y is a vector
     decoding_module: Trainable function that maps y to y where X is a vector
     """
+    self.resize=resize
     self.subsample=subsample
     self.scale=sig_scale
     self.losses={}
@@ -265,17 +269,24 @@ class Decoupled_Loss_Normal_Prior_Flexible_Encoding_Decoding_VAE(Base_Generative
     self.Encoding_Decoding=encoding_decoding_module
     self.Encoding_Decoding_mu=copy.deepcopy(self.Encoding_Decoding)
     self.Encoding_Decoding_sig=copy.deepcopy(self.Encoding_Decoding)
-    print(self.Encoding_Decoding.DEC)
+
     del self.Encoding_Decoding.DEC
-    del self.Encoding_Decoding_mu.ENC
-    del self.Encoding_Decoding_sig.ENC
+    del self.Encoding_Decoding_mu.ENC.im_layers
+    del self.Encoding_Decoding_sig.ENC.im_layers
     self.P.x_z_mu=copy.deepcopy(self.P.x_z)
     self.P.x_z_sig=copy.deepcopy(self.P.x_z)
+
     del self.P.x_z
 
     self.z_dim=self.Q.z_x_mu.layer_sizes[-1]
 
-  def model(self,x,resize=None):
+    if hasattr(self.Encoding_Decoding_mu.ENC,"idx_list"):
+      self.Encoding_Decoding_sig.ENC.idx_list=self.Encoding_Decoding.ENC.idx_list
+      self.Encoding_Decoding_mu.ENC.idx_list=self.Encoding_Decoding.ENC.idx_list
+      self.Encoding_Decoding_sig.ENC.Sidx_list=self.Encoding_Decoding.ENC.Sidx_list
+      self.Encoding_Decoding_mu.ENC.Sidx_list=self.Encoding_Decoding.ENC.Sidx_list
+
+  def model(self,x):
     pyro.module("x_z_mu_NET",self.P.x_z_mu)
     pyro.module("x_z_sig_NET",self.P.x_z_sig)
     with pyro.plate("data",x.shape[0]):
@@ -290,12 +301,14 @@ class Decoupled_Loss_Normal_Prior_Flexible_Encoding_Decoding_VAE(Base_Generative
       #Std
       x_re=self.P.x_z_sig(z)
       self.x_r_sig=self.Encoding_Decoding_sig.Decoding(x_re)
+      self.x_r_sig=torch.exp(self.x_r_sig*self.scale)
 
       #Add losses
 
       #Define prior relation to obs
-      if resize!=None:
-        x=F.interpolate(x,resize)
+      if self.resize!=None:
+        x=F.interpolate(x,self.resize)
+
       self.x_r=pyro.sample("obs",dist.Normal(self.x_r_mu,self.x_r_sig).to_event(3),obs=x.float())
   
   def guide(self,x):
@@ -312,8 +325,15 @@ class Decoupled_Loss_Normal_Prior_Flexible_Encoding_Decoding_VAE(Base_Generative
       #define prior in inference
       z=pyro.sample("latent",dist.Normal(z_mu,z_sig).to_event(1))
 
+      #ATTRIBUTE SHARING
       self.Encoding_Decoding_sig.fl.i_shape=self.Encoding_Decoding.fl.i_shape
       self.Encoding_Decoding_mu.fl.i_shape=self.Encoding_Decoding.fl.i_shape
+      if hasattr(self.Encoding_Decoding_mu.ENC,"idx_list"):
+        self.Encoding_Decoding_sig.ENC.idx_list=self.Encoding_Decoding.ENC.idx_list
+        self.Encoding_Decoding_mu.ENC.idx_list=self.Encoding_Decoding.ENC.idx_list
+        self.Encoding_Decoding_sig.ENC.Sidx_list=self.Encoding_Decoding.ENC.Sidx_list
+        self.Encoding_Decoding_mu.ENC.Sidx_list=self.Encoding_Decoding.ENC.Sidx_list
+
 
   def compute_losses(self,x_obs):
     self.losses["total_loss"]=0
@@ -327,8 +347,16 @@ class Decoupled_Loss_Normal_Prior_Flexible_Encoding_Decoding_VAE(Base_Generative
 
   def gen_forward_pass(self,xi,resize=None):
     x=self.Encoding_Decoding.Encoding(xi)
+
+    #ATTRIBUTE SHARING
     self.Encoding_Decoding_sig.fl.i_shape=self.Encoding_Decoding.fl.i_shape
     self.Encoding_Decoding_mu.fl.i_shape=self.Encoding_Decoding.fl.i_shape
+    if hasattr(self.Encoding_Decoding_mu.ENC,"idx_list"):
+      self.Encoding_Decoding_sig.ENC.idx_list=self.Encoding_Decoding.ENC.idx_list
+      self.Encoding_Decoding_mu.ENC.idx_list=self.Encoding_Decoding.ENC.idx_list
+      self.Encoding_Decoding_sig.ENC.Sidx_list=self.Encoding_Decoding.ENC.Sidx_list
+      self.Encoding_Decoding_mu.ENC.Sidx_list=self.Encoding_Decoding.ENC.Sidx_list
+
     z_mu=self.Q.z_x_mu(x)
     z_sig=torch.exp(self.Q.z_x_sig(x))
 
@@ -340,18 +368,25 @@ class Decoupled_Loss_Normal_Prior_Flexible_Encoding_Decoding_VAE(Base_Generative
     #Std
     x_re=self.P.x_z_sig(z)
     x_r_sig=self.Encoding_Decoding_sig.Decoding(x_re)
+    x_r_sig=torch.exp(x_r_sig*self.scale)
     #Add losses
     #Define prior relation to obs
-    if resize!=None:
-      x=F.interpolate(x,resize)
     x_r=dist.Normal(x_r_mu,x_r_sig).sample()
 
     return {"z_mu":z_mu.detach().cpu(),"z_sig":z_sig.detach().cpu(),"x_r":x_r.detach().cpu()}
 
   def forward_pass(self,xi,resize=None):
     x=self.Encoding_Decoding.Encoding(xi)
+
+    #ATTRIBUTE SHARING
     self.Encoding_Decoding_sig.fl.i_shape=self.Encoding_Decoding.fl.i_shape
     self.Encoding_Decoding_mu.fl.i_shape=self.Encoding_Decoding.fl.i_shape
+    if hasattr(self.Encoding_Decoding_mu.ENC,"idx_list"):
+      self.Encoding_Decoding_sig.ENC.idx_list=self.Encoding_Decoding.ENC.idx_list
+      self.Encoding_Decoding_mu.ENC.idx_list=self.Encoding_Decoding.ENC.idx_list
+      self.Encoding_Decoding_sig.ENC.Sidx_list=self.Encoding_Decoding.ENC.Sidx_list
+      self.Encoding_Decoding_mu.ENC.Sidx_list=self.Encoding_Decoding.ENC.Sidx_list
+
     z_mu=self.Q.z_x_mu(x)
     z_sig=torch.exp(self.Q.z_x_sig(x))
 
@@ -363,11 +398,10 @@ class Decoupled_Loss_Normal_Prior_Flexible_Encoding_Decoding_VAE(Base_Generative
     #Std
     x_re=self.P.x_z_sig(z)
     x_r_sig=self.Encoding_Decoding_sig.Decoding(x_re)
-    print(x_r_sig.shape)
+    x_r_sig=torch.exp(x_r_sig*self.scale)
+    
     #Add losses
     #Define prior relation to obs
-    if resize!=None:
-      x=F.interpolate(x,resize)
     x_r=dist.Normal(x_r_mu,x_r_sig).sample()
 
     return z_mu.detach(),z_sig.detach(),x_r.detach()

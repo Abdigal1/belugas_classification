@@ -7,6 +7,7 @@ from tqdm import tqdm
 from torchvision import transforms
 import torch
 from torch import nn
+import traceback
 
 sys.path.append(os.path.join("..","Preprocesamiento"))
 from Preprocesamiento import Custom_Transforms
@@ -173,6 +174,8 @@ class multi_parameter_training(trainer):
                     #elif self.K_fold_training!=None:
 
                 except Exception as e:
+                    #FOR DEBUGGING
+                    #traceback.print_exc()
                     tqdm.write("tranning failed")
                     tqdm.write(str(e))
                     test_json_save["experiment_state"]="fail"
