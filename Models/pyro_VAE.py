@@ -162,7 +162,7 @@ class Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder):
 
 class Decoupled_Loss_Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder):
   def __init__(self,encoding_decoding_module,P_NET,Q_NET,losses_weigths={"generative_loss":1},subsample=None,sig_scale=1,save_output=False,aux_dir=None,module_name=None):
-    super(Decoupled_Loss_Flexible_Encoding_Decoding_VAE,self).__init__(Encoder_Decoder_Module=encoding_decoding_module,P_NET=P_NET,Q_NET=Q_NET,losses_weigths=losses_weigths)
+    super(Flexible_Encoding_Decoding_VAE,self).__init__(Encoder_Decoder_Module=encoding_decoding_module,P_NET=P_NET,Q_NET=Q_NET,losses_weigths=losses_weigths)
     """
     encoding_module: Trainable function that maps X to y where y is a vector
     decoding_module: Trainable function that maps y to y where X is a vector
@@ -276,7 +276,8 @@ class Decoupled_Loss_Normal_Prior_Flexible_Encoding_Decoding_VAE(Base_Generative
     self.z_dim=self.Q.z_x_mu.layer_sizes[-1]
 
   def model(self,x,resize=None):
-    pyro.module("x_z_NET",self.P.x_z)
+    pyro.module("x_z_mu_NET",self.P.x_z_mu)
+    pyro.module("x_z_sig_NET",self.P.x_z_sig)
     with pyro.plate("data",x.shape[0]):
       z_mu=x.new_zeros(torch.Size((x.shape[0],self.z_dim)))
       z_sig=x.new_ones(torch.Size((x.shape[0],self.z_dim)))
@@ -285,11 +286,10 @@ class Decoupled_Loss_Normal_Prior_Flexible_Encoding_Decoding_VAE(Base_Generative
 
       #Mean
       x_re=self.P.x_z_mu(z)
-      self.x_r_mu=self.Encoding_Decoding.Decoding_mu(x_re)
+      self.x_r_mu=self.Encoding_Decoding_mu.Decoding(x_re)
       #Std
       x_re=self.P.x_z_sig(z)
-      self.x_r_sig=self.Encoding_Decoding.Decoding_sig(x_re)
-      print(self.x_r_sig.shape)
+      self.x_r_sig=self.Encoding_Decoding_sig.Decoding(x_re)
 
       #Add losses
 
@@ -312,10 +312,13 @@ class Decoupled_Loss_Normal_Prior_Flexible_Encoding_Decoding_VAE(Base_Generative
       #define prior in inference
       z=pyro.sample("latent",dist.Normal(z_mu,z_sig).to_event(1))
 
+      self.Encoding_Decoding_sig.fl.i_shape=self.Encoding_Decoding.fl.i_shape
+      self.Encoding_Decoding_mu.fl.i_shape=self.Encoding_Decoding.fl.i_shape
+
   def compute_losses(self,x_obs):
     self.losses["total_loss"]=0
     self.losses["generative_loss"]=self.gen_loss_fun(self.model,self.guide,x_obs)
-    self.losses["reconstruction"]=F.binary_cross_entropy(self.x_r,x_obs,size_average=False)
+    #self.losses["reconstruction"]=F.binary_cross_entropy(self.x_r,x_obs,size_average=False)
 
     for loss in self.losses_weigths.keys():
       self.losses["total_loss"]=self.losses["total_loss"]+self.losses[loss]*self.losses_weigths[loss]
@@ -324,16 +327,19 @@ class Decoupled_Loss_Normal_Prior_Flexible_Encoding_Decoding_VAE(Base_Generative
 
   def gen_forward_pass(self,xi,resize=None):
     x=self.Encoding_Decoding.Encoding(xi)
+    self.Encoding_Decoding_sig.fl.i_shape=self.Encoding_Decoding.fl.i_shape
+    self.Encoding_Decoding_mu.fl.i_shape=self.Encoding_Decoding.fl.i_shape
     z_mu=self.Q.z_x_mu(x)
     z_sig=torch.exp(self.Q.z_x_sig(x))
 
     z=dist.Normal(z_mu,z_sig).sample()
 
+    #DECODING
     x_re=self.P.x_z_mu(z)
-    x_r_mu=self.Encoding_Decoding.Decoding_mu(x_re)
+    x_r_mu=self.Encoding_Decoding_mu.Decoding(x_re)
     #Std
     x_re=self.P.x_z_sig(z)
-    x_r_sig=self.Encoding_Decoding.Decoding_sig(x_re)
+    x_r_sig=self.Encoding_Decoding_sig.Decoding(x_re)
     #Add losses
     #Define prior relation to obs
     if resize!=None:
@@ -344,11 +350,14 @@ class Decoupled_Loss_Normal_Prior_Flexible_Encoding_Decoding_VAE(Base_Generative
 
   def forward_pass(self,xi,resize=None):
     x=self.Encoding_Decoding.Encoding(xi)
+    self.Encoding_Decoding_sig.fl.i_shape=self.Encoding_Decoding.fl.i_shape
+    self.Encoding_Decoding_mu.fl.i_shape=self.Encoding_Decoding.fl.i_shape
     z_mu=self.Q.z_x_mu(x)
     z_sig=torch.exp(self.Q.z_x_sig(x))
 
     z=dist.Normal(z_mu,z_sig).sample()
 
+    #DECODING
     x_re=self.P.x_z_mu(z)
     x_r_mu=self.Encoding_Decoding_mu.Decoding(x_re)
     #Std
