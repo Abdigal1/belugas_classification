@@ -83,7 +83,7 @@ class multi_parameter_training(trainer):
             
     def parse_activators(self,raw_params):
         for param in list(raw_params.keys()):
-            if "activators" in param:
+            if "activators" in param or "act" in param or "bridge_act" in param or "lay_act" in param:
                 if isinstance(raw_params[param]["name"],list):
                     instantiated_act=[]
                     for act_id in range(len(raw_params[param]["name"])):
