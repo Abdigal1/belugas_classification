@@ -156,6 +156,9 @@ class multi_parameter_training(trainer):
             trainer_args["data_dir"]=test
             trainer_args["dataset"]=self.datasets
 
+            #model load debug
+            #print(self.instantiated_model)
+
             self.trainer=trainer(**(trainer_args))
             self.trainer.optimizer=torch.optim.Adam(self.trainer.model.parameters(),**(test_json["optimizer"]))
             
