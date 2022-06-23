@@ -18,7 +18,7 @@ from Train_utils.Multi_parameter_train import multi_parameter_training
 from Generation_utils.utils import parallel_gen_metadata_model
 
 def main():
-    res_dir=os.path.join("..","Results","VAE","Basic_CNN_EDM","Test_1")
+    res_dir=os.path.join("..","Results","VAE","ResNET_EDM","Test_50")
     model_state=torch.load(os.path.join(res_dir,'best0.pt'))
 
     if "metadata" not in os.listdir(res_dir):
