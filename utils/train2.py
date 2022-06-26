@@ -85,6 +85,16 @@ class CustomTrain(nn.Module):
             x = torch.sigmoid(x)
    
         return x
+    
+    def eval(self):
+        self.train(False)
+        for i in self.b_list:
+            i.train(False)
+
+    def cust_train(self):
+        self.train(True)
+        for i in self.b_list:
+            i.train(True)
 
 class datapaltas(Dataset):
     def __init__(self, df, scale =True, y_idx=-1):
@@ -145,7 +155,7 @@ def train(data, model, ep = 120, save=False, prefix=None, device='cpu'):
         for i in itt:
             loss_epoch = 0
             acc_train, acc_test = 0.0, 0.0
-            model.train()
+            model.cust_train()
             for sample in train_loader:
                 X, y = sample['x'], sample['y']
                 X, y = X.to(device), y.to(device).flatten()
