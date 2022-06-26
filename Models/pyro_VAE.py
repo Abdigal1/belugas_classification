@@ -162,6 +162,13 @@ class Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder):
 
     return z_mu.detach(),z_sig.detach(),x_r.detach()
 
+  def forward_latent_pass(self,xi):
+    x=self.Encoding_Decoding.Encoding(xi)
+    z_mu=self.Q.z_x_mu(x)
+    z_sig=torch.exp(self.Q.z_x_sig(x))
+
+    return z_mu.detach(),z_sig.detach()
+
 class Decoupled_Loss_Flexible_Encoding_Decoding_VAE(Base_Generative_AutoEncoder):
   def __init__(self,encoding_decoding_module,P_NET,Q_NET,losses_weigths={"generative_loss":1},subsample=None,sig_scale=1,save_output=False,aux_dir=None,module_name=None,resize=None):
     super(Flexible_Encoding_Decoding_VAE,self).__init__(Encoder_Decoder_Module=encoding_decoding_module,P_NET=P_NET,Q_NET=Q_NET,losses_weigths=losses_weigths)
