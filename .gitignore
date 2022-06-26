@@ -131,3 +131,6 @@ dmypy.json
 **.csv
 images/
 metadata/
+**.pth
+metadata1/
+metadata_50/
