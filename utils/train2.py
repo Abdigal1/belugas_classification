@@ -240,9 +240,9 @@ def train(data, model, ep = 120, save=False, prefix=None, device='cpu'):
 
 
 
-def trainRank(data, model, ep = 120, save=False, prefix=None, device='cpu'):
+def trainRank(data, model, optimizer, ep = 120, save=False, prefix=None, device='cpu'):
     criterion = nn.TripletMarginLoss()
-    optimizer = optim.SGD(model.parameters(), lr = 0.001, momentum=0.2, weight_decay=0.12, nesterov=True)
+    
     idx_result = {}
     a = RankDataset(df = data, txt=os.path.join(os.pardir, 'sampler.txt'))
     EPOCHS = ep
