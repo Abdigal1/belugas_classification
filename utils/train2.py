@@ -26,18 +26,25 @@ def get_columname(PATH):
 
 def load_meta(PATH):
     total = []
+    idx = []
     for i in list(os.listdir(PATH)):
         instance_list= []
         file = os.path.join(PATH, i)
+        filename = i.split('.')[0]
+        image_id, val = filename.split('_')
         instance = np.load(file, allow_pickle=True)
         instance_list.extend(instance['z_mu'])
         instance_list.extend(instance['z_sig'])
         instance_list.extend(instance['vp'])
         instance_list.append(int(instance['y'].item()))
+        if int(val) != int(instance['y'].item()):
+            print("Error")
+            break
+        idx.append('train'+str(image_id).zfill(4))
         total.append(instance_list)
     
     total = np.array(total)
-    df = pd.DataFrame(data = total, columns=get_columname(PATH))
+    df = pd.DataFrame(data = total, columns=get_columname(PATH), index = idx)
     df = df.astype({'vp0':int, 'vp1':int, 'vp2':int, 'y':int})
     return df
 
