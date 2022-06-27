@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedKFold, KFold
 from tqdm import tqdm
 
 def init_normal(m):
@@ -102,6 +102,31 @@ class CustomTrain(nn.Module):
         self.train(True)
         for i in self.b_list:
             i.train(True)
+
+
+class RankDataset(Dataset):
+    def __init__(self, df, txt):
+        self.df = df.drop('y', axis = 1)
+        self.txt = txt
+        self.array = None
+        with open(self.txt, 'r') as file:
+            self.array = file.readlines()
+
+    def __getitem__(self, index):
+        #print(index, len(self.array))
+        a, p, n = (self.array[index]).split(" ")
+        n = n[:-1]
+        a = self.df.loc[a].values
+        p = self.df.loc[p].values
+        n = self.df.loc[n].values
+        a = a.astype(np.float64)
+        p = p.astype(np.float64)
+        n = n.astype(np.float64)
+        return {'a':torch.from_numpy(a).float(),\
+                'p':torch.from_numpy(p).float(), \
+                'n':torch.from_numpy(n).float()}
+
+
 
 class datapaltas(Dataset):
     def __init__(self, df, scale =True, y_idx=-1):
@@ -211,3 +236,59 @@ def train(data, model, ep = 120, save=False, prefix=None, device='cpu'):
     idx_result['acc_std'] = np.std(acv, axis=0)
     idx_result['train_acc'] = np.mean(tav, axis=0)
     return idx_result
+
+
+
+
+def trainRank(data, model, ep = 120, save=False, prefix=None, device='cpu'):
+    criterion = nn.TripletMarginLoss()
+    optimizer = optim.SGD(model.parameters(), lr = 0.001, momentum=0.2, weight_decay=0.12, nesterov=True)
+    idx_result = {}
+    a = RankDataset(df = data, txt=os.path.join(os.pardir, 'sampler.txt'))
+    EPOCHS = ep
+    skf = KFold(shuffle=True)
+    ## y_idx -2
+    skf.get_n_splits(list(range(len(a.array))))
+    vec_train = np.array([train_ids for train_ids,_ in skf.split(list(range(len(a.array))))])
+    vec_test = np.array([test_ids for _,test_ids in skf.split(list(range(len(a.array))))])
+    foldloss = []
+    foldn = 0
+    for train_ids, test_ids in zip(vec_train, vec_test):
+        acloss = []
+        train_subsampler = torch.utils.data.SubsetRandomSampler(train_ids)
+        test_subsampler = torch.utils.data.SubsetRandomSampler(test_ids)
+        train_loader = torch.utils.data.DataLoader(
+                            a, 
+                            batch_size=64, sampler=train_subsampler)
+        test_loader = torch.utils.data.DataLoader(
+                            a,
+                            batch_size=1, sampler=test_subsampler)
+
+        EPOCHS = ep
+        itt = tqdm(range(EPOCHS))
+        for i in itt:
+            loss_epoch = 0
+            model.cust_train()
+            for sample in train_loader:
+                a, p, n = sample['a'], sample['p'], sample['n']
+                a, p, n = a.to(device), p.to(device), n.to(device)
+                emb_a, emb_p, emb_n = model(a), model(p), model(n)
+                #print(y_pred, y)
+                loss = criterion(emb_a, emb_p, emb_n)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                loss_epoch += loss.item()
+            loss_epoch/=len(train_loader)
+            itt.set_description(f"Loss: {loss_epoch:.9f}")
+            acloss.append(loss_epoch)
+            if save and loss_epoch<=(min(acloss)):
+                    if os.path.exists(os.path.join(os.curdir, prefix+"model_fold_"+str(foldn)+".pth")):
+                        os.remove(os.path.join(os.curdir, prefix+"model_fold_"+str(foldn)+".pth"))
+                    torch.save(model, os.path.join(os.curdir, prefix+"model_fold_"+str(foldn)+".pth"))
+                    itt.set_postfix({'epoch_model': np.argmin(acloss)+1, 'loss':min(acloss)})
+
+        foldloss.append(acloss)
+        foldn += 1
+        model.apply(init_normal)
+        return {'loss':foldloss}
